@@ -16,9 +16,7 @@ O banco de dados é composto por **6 tabelas principais**, totalmente relacionad
 * **`prescricoes`**: Tabela associativa (N:M) que liga as consultas aos medicamentos receitados, utilizando chaves primárias compostas.
 
 ### 📐 Modelo Relacional (DER)
-> [!TIP]
-> Se você gerou um diagrama no MySQL Workbench, salve como imagem (`der.png`), coloque na mesma pasta e descomente a linha abaixo:
-> ---
+ainda nao fiz pois meu SQL Bugou
 
 ## 🚀 Recursos Implementados no Script
 
