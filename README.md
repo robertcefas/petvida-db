@@ -47,4 +47,4 @@ Implementação de controle estrito de acessos baseado em papéis (RBAC):
 4. Execute o script principal para criar o banco de dados, tabelas, realizar a carga de dados de teste (Seed) e criar as procedures/functions.
 
 ```sql
-source petvida.sql;
+source banco.sql;
