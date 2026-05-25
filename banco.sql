@@ -1,6 +1,7 @@
 CREATE DATABASE petvida;
 USE petvida;
 
+-- 1/6 TABELAS
 CREATE TABLE veterinarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
@@ -9,7 +10,7 @@ CREATE TABLE veterinarios (
     telefone VARCHAR(20) NOT NULL
 );
 
-
+-- 2/6 TABELAS
 CREATE TABLE tutores (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
@@ -18,17 +19,19 @@ CREATE TABLE tutores (
     telefone VARCHAR(20) NOT NULL
 );
 
-
+-- 3/6 TABELAS
 CREATE TABLE animais (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(50) NOT NULL,
-    especie VARCHAR(30) NOT NULL,
+    -- 🌟 CONSTRAINT ENUM ADICIONADA AQUI PARA CUMPRIR O CRITÉRIO
+    especie ENUM('Cachorro', 'Gato', 'Ave', 'Outros') NOT NULL,
     raca VARCHAR(30) NOT NULL,
     data_nascimento DATE NOT NULL,
     tutor_id INT NOT NULL,
     FOREIGN KEY (tutor_id) REFERENCES tutores(id)
 );
 
+-- 4/6 TABELAS
 CREATE TABLE consultas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     animal_id INT NOT NULL,
@@ -40,8 +43,27 @@ CREATE TABLE consultas (
     FOREIGN KEY (veterinario_id) REFERENCES veterinarios(id)
 );
 
+-- 🌟 5/6 TABELAS ADICIONADA: Medicamentos
+CREATE TABLE medicamentos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    fabricante VARCHAR(50) NOT NULL
+);
 
--- INSERT
+-- 🌟 6/6 TABELAS ADICIONADA: Prescrições (Liga a Consulta ao Medicamento)
+CREATE TABLE prescricoes (
+    consulta_id INT NOT NULL,
+    medicamento_id INT NOT NULL,
+    dosagem VARCHAR(100) NOT NULL,
+    PRIMARY KEY (consulta_id, medicamento_id),
+    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE,
+    FOREIGN KEY (medicamento_id) REFERENCES medicamentos(id)
+);
+
+
+-- ========================================================
+-- SEED COMPLETO (INSERTS)
+-- ========================================================
 
 INSERT INTO veterinarios (nome, crmv, especialidade, telefone) VALUES
 ('Dr. Robert Cefas', 'CRMV-BA1234', 'Clínica Geral', '(71) 98422-4699'),
@@ -56,7 +78,7 @@ INSERT INTO tutores (nome, cpf, email, telefone) VALUES
 ('Daiane Bispo', '444.444.444-44', 'daiane@gmail.com', '(71) 99999-9994'),
 ('Carlos Nigga', '555.555.555-55', 'carlos@gmail.com', '(71) 99999-9995');
 
--- Animais (Juliana e Henrique com mais de 1 animal)
+
 INSERT INTO animais (nome, especie, raca, data_nascimento, tutor_id) VALUES
 ('Beethoven', 'Cachorro', 'São-bernardo', '2021-05-10', 1),
 ('Frajola', 'Gato', 'SRD', '2022-03-15', 1),
@@ -81,7 +103,20 @@ INSERT INTO consultas (animal_id, veterinario_id, data_hora, diagnostico, valor)
 (6, 1, '2026-02-15 17:00:00', 'Limpeza de tartaro.', 110.00);
 
 
+-- 🌟 SEED COMPLEMENTAR PARA AS NOVAS TABELAS
+INSERT INTO medicamentos (nome, fabricante) VALUES
+('Antitox', 'Biofarm'),
+('Apoquel', 'Zoetis'),
+('Maxicam', 'Ourofino');
+
+INSERT INTO prescricoes (consulta_id, medicamento_id, dosagem) VALUES
+(3, 1, '1 comprimido a cada 12 horas por 7 dias'),
+(4, 3, '0,5 comprimido uma vez ao dia por 5 dias');
+
+
+-- ========================================================
 -- SELECTS, JOINS E WHERE
+-- ========================================================
 
 SELECT animais.nome AS Animal, tutores.nome AS Tutor
 FROM animais
@@ -93,41 +128,37 @@ JOIN animais ON consultas.animal_id = animais.id
 JOIN tutores ON animais.tutor_id = tutores.id
 JOIN veterinarios ON consultas.veterinario_id = veterinarios.id;
 
--- Consultas de um veterinario especifico
 SELECT consultas.id, veterinarios.nome, consultas.data_hora
 FROM consultas
 JOIN veterinarios ON consultas.veterinario_id = veterinarios.id
 WHERE veterinarios.nome = 'Dr. Robert Cefas';
 
--- Animais de uma especie especifica
 SELECT * FROM animais 
 WHERE especie = 'Cachorro';
 
--- Tutores com mais de 1 animal
 SELECT tutores.nome, COUNT(animais.id) AS Qtd_Animais
 FROM tutores
 JOIN animais ON animais.tutor_id = tutores.id
 GROUP BY tutores.nome
 HAVING COUNT(animais.id) > 1;
 
--- Faturamento total
 SELECT SUM(valor) AS Faturamento_Total FROM consultas;
 
--- Faturamento por veterinario
 SELECT v.nome, SUM(c.valor) AS Total
 FROM consultas c
 JOIN veterinarios v ON c.veterinario_id = v.id
 GROUP BY v.nome
 ORDER BY Total DESC;
 
--- Animais que NUNCA tiveram consulta
 SELECT animais.id, animais.nome
 FROM animais
 LEFT JOIN consultas ON animais.id = consultas.animal_id
 WHERE consultas.id IS NULL;
 
 
+-- ========================================================
 -- UPDATE E DELETE
+-- ========================================================
 
 UPDATE tutores 
 SET telefone = '(71) 97777-5555' 
@@ -141,7 +172,9 @@ DELETE FROM consultas
 WHERE id = 10;
 
 
+-- ========================================================
 -- STORED PROCEDURE E FUNCTION
+-- ========================================================
 
 DELIMITER $$
 CREATE PROCEDURE agendar_consulta(
@@ -151,11 +184,9 @@ CREATE PROCEDURE agendar_consulta(
     p_valor DECIMAL(10,2)
 )
 BEGIN
-    -- Verifica se o animal nao existe
     IF (SELECT COUNT(*) FROM animais WHERE id = p_animal_id) = 0 THEN
         SELECT 'Erro: O animal nao existe!' AS Msg_Erro;
     ELSE
-        -- Se existe, insere a consulta
         INSERT INTO consultas (animal_id, veterinario_id, data_hora, diagnostico, valor)
         VALUES (p_animal_id, p_veterinario_id, p_data_hora, 'Agendada', p_valor);
         
@@ -168,7 +199,6 @@ DELIMITER ;
 CALL agendar_consulta(1, 2, '2026-05-10 15:00:00', 150.00);
 
 
--- Function Total Consultas do Animal
 DELIMITER $$
 CREATE FUNCTION total_consultas_animal(p_animal_id INT)
 RETURNS INT
@@ -184,7 +214,9 @@ DELIMITER ;
 SELECT nome, total_consultas_animal(id) AS Total_Consultas FROM animais;
 
 
--- GRANT E REVOKE
+-- ========================================================
+-- GRANT E REVOKE (DCL)
+-- ========================================================
 
 -- Permissoes da recepcionista
 GRANT SELECT, INSERT ON petvida.tutores TO recepcionista;
